@@ -73,8 +73,8 @@ class IntDefinition(DataDefinition):
 
     @classmethod
     def parser(cls, reader: Reader) -> Tuple[IntDefinition, Reader]:
-        address, data_bytes = reader.read(cls.size)
-        return cls(int.from_bytes(data_bytes, byteorder=cls.byteorder), metadata=Metadata(address)), reader
+        (address, data_bytes), new_reader = reader.read(cls.size)
+        return cls(int.from_bytes(data_bytes, byteorder=cls.byteorder), metadata=Metadata(address)), new_reader
 
     def __repr__(self) -> str:
         cls_name = type(self).__name__
@@ -156,7 +156,7 @@ class StructDefinition(DataDefinition):
         fields_strs = map(lambda k, v: f"{k}: {v}", self.field_types.keys(), map(str, self.fields))
         fields_strs_indented = map(indent_4, fields_strs)
         fields_str = "\n".join(fields_strs_indented)
-        return f"{cls_name} {self.add_metadata_repr()}:\n{fields_str}"
+        return f"{cls_name} (size: {self.size}) {self.add_metadata_repr()}:\n{fields_str}"
 
     @classmethod
     def parser(cls, reader: Reader) -> Tuple[StructDefinition, Reader]:
@@ -229,7 +229,7 @@ class BitFieldDefinition:
 
     def __str__(self):
         cls_name = type(self).__name__
-        return f"{cls_name}: {self.value:#x}"
+        return f"{cls_name} (size: {self.size}, position: {self.position}) : {self.value:#x}"
 
     @classmethod
     def from_register(cls, value: int) -> BitFieldDefinition:
@@ -279,7 +279,7 @@ class BitFieldsDefinition(DataDefinition):
         fields_strs = map(str, self.fields)
         fields_strs_indented = map(indent_4, fields_strs)
         fields_str = "\n".join(fields_strs_indented)
-        return f"{cls_name}({self.add_metadata_repr(hex(self.value))})\n{fields_str}"
+        return f"{cls_name} (size: {self.size}) {self.add_metadata_repr(hex(self.value))}\n{fields_str}"
 
 
 BitFieldDef = Tuple[str, int]
@@ -354,9 +354,7 @@ class PointerDefinition(DataDefinition):
 
         target_name = self.target_type.__name__
         p_str = f"pointer to object of type: {target_name}"
-        return (
-            f"{cls_name}({self.add_metadata_repr(hex(self.address))})\n*{self.address:#x} -> {target_name} :: {p_str}"
-        )
+        return f"{cls_name} (size: {self.size}) {self.add_metadata_repr(hex(self.address))}\n*{self.address:#x} -> {target_name} :: {p_str}"
 
     @classmethod
     def parser(cls, reader: Reader) -> Tuple[PointerDefinition, Reader]:
@@ -420,8 +418,12 @@ class ArrayDefinition(DataDefinition):
 
     @classmethod
     def parser(cls, reader: Reader) -> Tuple[ArrayDefinition, Reader]:
-        fields, new_reader = cls._fields_parser(reader)
-        return cls(fields, metadata=fields[0].metadata), new_reader
+        if cls.size:
+            fields, new_reader = cls._fields_parser(reader)
+            return cls(fields, metadata=fields[0].metadata), new_reader
+        else:
+            (address, _), new_reader = reader.read(0)  # to get the address
+            return cls([], metadata=Metadata(address)), new_reader
 
 
 def create_array_definition(

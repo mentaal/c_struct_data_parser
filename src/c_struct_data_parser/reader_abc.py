@@ -4,20 +4,25 @@ from abc import ABC, abstractmethod
 from typing import Tuple
 
 
-AddressData = Tuple[int, bytes]
+AddressData = Tuple[int, bytes | memoryview]
 
 
 class Reader(ABC):
 
-    def __init__(self, address: int):
+    def __init__(self, address: int, offset: int = 0):
         self.address = address
-        self.offset = 0
+        self.offset = offset
 
     @abstractmethod
-    def read(self, size: int) -> AddressData:
+    def read(self, size: int) -> Tuple[AddressData, Reader]:
         current_offset = self.offset
-        self.offset += size
-        return (self.address + current_offset, bytes(size))
+        return (
+            (self.address + current_offset, bytes(size)),
+            self.new_reader(self.address + size),
+        )
 
     def new_reader(self, address: int) -> Reader:
         return type(self)(address)
+
+
+ReaderData = Tuple[AddressData, Reader]

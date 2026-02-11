@@ -10,20 +10,7 @@ from typing import (
     TypeVar,
 )
 
-
-class Reader(ABC):
-
-    def __init__(self, address: int):
-        self.address = address
-        self.offset = 0
-
-    @abstractmethod
-    def read(self, size: int) -> bytes:
-        self.offset += size
-        return bytes(size)
-
-    def new_reader(self, address: int) -> Reader:
-        return type(self)(address)
+from .reader_abc import Reader
 
 
 T = TypeVar("T")
