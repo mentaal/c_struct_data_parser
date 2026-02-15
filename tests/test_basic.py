@@ -105,7 +105,7 @@ def test_pointer_type() -> None:
 
 Struct2IntArray5 = create_array_definition(
     target_type=Struct2Int,
-    size=5,
+    num_elems=5,
 )
 
 
@@ -116,7 +116,13 @@ def test_array_type() -> None:
 
     struct_2_int_array, new_reader = Struct2IntArray5.parser(bytes_reader)
     print(struct_2_int_array)
-    for (a, b), array_entry in zip(grouper(2, nums), struct_2_int_array.fields):
+    assert len(struct_2_int_array.fields) == 5
+    array_addresses = range(0, 5 * 8, 8)
+    assert struct_2_int_array.size == 8 * 5
+    for expected_address, (a, b), array_entry in zip(
+        array_addresses, grouper(2, nums), struct_2_int_array.fields
+    ):
+        assert array_entry.metadata.address == expected_address
         assert array_entry.value_a.value == a
         assert array_entry.value_b.value == b
 

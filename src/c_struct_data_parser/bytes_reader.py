@@ -11,7 +11,7 @@ class BytesReader(Reader):
         read_bytes = self.bs[current : current + size]
         if len(read_bytes) < size:
             raise ValueError(f"Failed to read requested number of bytes: {size}")
-        return (self.address + current, read_bytes), self.new_reader(self.address + size)
+        return (self.address, read_bytes), self.new_reader(self.address + size)
 
     def new_reader(self, address: int) -> Reader:
         delta = address - self.address

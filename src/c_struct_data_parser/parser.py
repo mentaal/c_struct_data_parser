@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from functools import reduce
 from itertools import chain, repeat
 from typing import (

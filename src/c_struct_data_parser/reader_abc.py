@@ -8,7 +8,6 @@ AddressData = Tuple[int, bytes | memoryview]
 
 
 class Reader(ABC):
-
     def __init__(self, address: int, offset: int = 0):
         self.address = address
         self.offset = offset

@@ -35,7 +35,7 @@ class DataDefinition(ABC):
 
     def __init__(
         self,
-        metadata: Optional[Metadata],
+        metadata: Metadata,
     ):
         self.metadata = metadata
 
@@ -60,9 +60,8 @@ class IntDefinition(DataDefinition):
     def __init__(
         self,
         value: int | Enum,
-        metadata: Optional[Metadata] = None,
+        metadata: Metadata = None,
     ):
-
         super().__init__(metadata)
         if isinstance(value, int):
             self.value = value
@@ -74,7 +73,10 @@ class IntDefinition(DataDefinition):
     @classmethod
     def parser(cls, reader: Reader) -> Tuple[IntDefinition, Reader]:
         (address, data_bytes), new_reader = reader.read(cls.size)
-        return cls(int.from_bytes(data_bytes, byteorder=cls.byteorder), metadata=Metadata(address)), new_reader
+        return cls(
+            int.from_bytes(data_bytes, byteorder=cls.byteorder),
+            metadata=Metadata(address),
+        ), new_reader
 
     def __repr__(self) -> str:
         cls_name = type(self).__name__
@@ -96,9 +98,13 @@ class IntDefinition(DataDefinition):
         enum_type = self._enum_type
         if enum_type:
             try:
-                val_str = repr(enum_type(val))  # repr(Enum(<num>)) looks more like str(Enum(<num>)) and vice versa
+                val_str = repr(
+                    enum_type(val)
+                )  # repr(Enum(<num>)) looks more like str(Enum(<num>)) and vice versa
             except ValueError:
-                val_str = f"{val:#x} ({val}) not a valid Enumeration of type: {enum_type}"
+                val_str = (
+                    f"{val:#x} ({val}) not a valid Enumeration of type: {enum_type}"
+                )
         else:
             val_str = hex(val)
 
@@ -137,14 +143,16 @@ class StructDefinition(DataDefinition):
     def __init__(
         self,
         fields: Sequence[DataDefinition],
-        metadata: Optional[Metadata] = None,
+        metadata: Metadata,
     ):
         super().__init__(metadata)
         self.fields = tuple(fields)
         fields_len = len(fields)
         field_types_len = len(self.field_types)
         if fields_len != field_types_len:
-            raise ValueError(f"Supplied number of fields: {fields_len} doesn't match expectation: {field_types_len}")
+            raise ValueError(
+                f"Supplied number of fields: {fields_len} doesn't match expectation: {field_types_len}"
+            )
         for (k, t), v in zip(self.field_types.items(), fields):
             if not isinstance(v, t):
                 raise ValueError(f"Got unexpected value: {v} for type: {t}")
@@ -153,10 +161,14 @@ class StructDefinition(DataDefinition):
     def __str__(self) -> str:
         cls_name = type(self).__name__
 
-        fields_strs = map(lambda k, v: f"{k}: {v}", self.field_types.keys(), map(str, self.fields))
+        fields_strs = map(
+            lambda k, v: f"{k}: {v}", self.field_types.keys(), map(str, self.fields)
+        )
         fields_strs_indented = map(indent_4, fields_strs)
         fields_str = "\n".join(fields_strs_indented)
-        return f"{cls_name} (size: {self.size}) {self.add_metadata_repr()}:\n{fields_str}"
+        return (
+            f"{cls_name} (size: {self.size}) {self.add_metadata_repr()}:\n{fields_str}"
+        )
 
     @classmethod
     def parser(cls, reader: Reader) -> Tuple[StructDefinition, Reader]:
@@ -187,18 +199,23 @@ def create_struct_definition(
     struct_name: str,
     field_types: Dict[str, Type[DataDefinition] | ForwardPointer],
 ) -> Type[StructDefinition]:
-
     new_struct = type(
         struct_name,
         (StructDefinition,),
         {},
     )
 
-    normalized_field_types = {k: replace_forward_pointer(new_struct, v) for (k, v) in field_types.items()}
-    sequence_parser = create_sequence_parser(*map(get_parser, normalized_field_types.values()))
+    normalized_field_types = {
+        k: replace_forward_pointer(new_struct, v) for (k, v) in field_types.items()
+    }
+    sequence_parser = create_sequence_parser(
+        *map(get_parser, normalized_field_types.values())
+    )
 
     @classmethod
-    def parser(cls: Type[StructDefinition], reader: Reader) -> Tuple[StructDefinition, Reader]:
+    def parser(
+        cls: Type[StructDefinition], reader: Reader
+    ) -> Tuple[StructDefinition, Reader]:
         parsed_field_results, new_reader = sequence_parser(reader)
         metadata = Metadata(parsed_field_results[0].metadata.address)
         return cls(parsed_field_results, metadata=metadata), new_reader
@@ -220,7 +237,9 @@ class BitFieldDefinition:
         value: int,
     ):
         if value > self.mask:
-            raise ValueError(f"Passed in value: {value:#x} greater than mask: {self.mask:#x}")
+            raise ValueError(
+                f"Passed in value: {value:#x} greater than mask: {self.mask:#x}"
+            )
         self.value = value
 
     def __repr__(self):
@@ -244,7 +263,7 @@ class BitFieldsDefinition(DataDefinition):
     def __init__(
         self,
         value: int,
-        metadata: Optional[Metadata],
+        metadata: Metadata,
     ):
         super().__init__(metadata)
         self.value = value
@@ -253,7 +272,9 @@ class BitFieldsDefinition(DataDefinition):
         field_types_len = len(self.field_types)
 
         if fields_len != field_types_len:
-            raise ValueError(f"Supplied number of fields: {fields_len} doesn't match expectation: {field_types_len}")
+            raise ValueError(
+                f"Supplied number of fields: {fields_len} doesn't match expectation: {field_types_len}"
+            )
         for (k, t), v in zip(self.field_types.items(), self.fields):
             if not isinstance(v, t):
                 raise ValueError(f"Got unexpected value: {v} for type: {t}")
@@ -286,7 +307,9 @@ BitFieldDef = Tuple[str, int]
 BitFieldDefs = Dict[str, int]
 
 
-def _create_bit_field_definition_from_bit_field_def(position: int, bf_def: BitFieldDef) -> Type[BitFieldDefinition]:
+def _create_bit_field_definition_from_bit_field_def(
+    position: int, bf_def: BitFieldDef
+) -> Type[BitFieldDefinition]:
     name, size = bf_def
     bit_field_definition = type(
         name,
@@ -304,7 +327,9 @@ def _create_bit_field_definition_from_bit_field_def(position: int, bf_def: BitFi
 PosFieldsTup = Tuple[int, Tuple[Type[BitFieldDefinition], ...]]
 
 
-def _create_fields_reducer(pos_fields_tup: PosFieldsTup, field_def: BitFieldDef) -> PosFieldsTup:
+def _create_fields_reducer(
+    pos_fields_tup: PosFieldsTup, field_def: BitFieldDef
+) -> PosFieldsTup:
     pos, fields = pos_fields_tup
     name, size = field_def
     new_field = _create_bit_field_definition_from_bit_field_def(pos, field_def)
@@ -340,7 +365,7 @@ class PointerDefinition(DataDefinition):
     def __init__(
         self,
         address: int,
-        metadata: Optional[Metadata],
+        metadata: Metadata,
     ):
         super().__init__(metadata)
         self.address = address
@@ -379,7 +404,7 @@ def create_pointer_definition(
         {
             "target_type": target_type,
             "address_type": address_type,
-            "size": target_type.size,
+            "size": address_type.size,
         },
     )
 
@@ -397,13 +422,14 @@ def _create_pointer_definition_from_forward_pointer(
 class ArrayDefinition(DataDefinition):
     target_type: Type[DataDefinition]
     size: int
+    num_elems: int
     _fields_parser: Parser
     _array_splitter = "\n" + 80 * "=" + "\n"
 
     def __init__(
         self,
         fields: Sequence[DataDefinition],
-        metadata: Optional[Metadata],
+        metadata: Metadata,
     ):
         super().__init__(metadata)
         self.fields = fields
@@ -414,7 +440,7 @@ class ArrayDefinition(DataDefinition):
         fields_strs = map(str, self.fields)
         fields_strs_indented = map(indent_4, fields_strs)
         fields_str = self._array_splitter.join(fields_strs_indented)
-        return f"{cls_name}:: {target_cls}[{self.size}] {self.add_metadata_repr()}:\n{fields_str}"
+        return f"{cls_name}:: {target_cls}[{self.num_elems}] {self.add_metadata_repr()}:\n{fields_str}"
 
     @classmethod
     def parser(cls, reader: Reader) -> Tuple[ArrayDefinition, Reader]:
@@ -428,15 +454,16 @@ class ArrayDefinition(DataDefinition):
 
 def create_array_definition(
     target_type: Type[DataDefinition],
-    size: int,
+    num_elems: int,
 ) -> Type[ArrayDefinition]:
-    fields_parser = create_repeat_parser(size, target_type.parser)
+    fields_parser = create_repeat_parser(num_elems, target_type.parser)
     return type(
         f"{target_type.__name__}Array",
         (ArrayDefinition,),
         {
             "target_type": target_type,
-            "size": size,
+            "num_elems": num_elems,
+            "size": target_type.size * num_elems,
             "_fields_parser": fields_parser,
         },
     )
