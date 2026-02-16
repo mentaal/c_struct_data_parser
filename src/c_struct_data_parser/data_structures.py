@@ -73,10 +73,13 @@ class IntDefinition(DataDefinition):
     @classmethod
     def parser(cls, reader: Reader) -> Tuple[IntDefinition, Reader]:
         (address, data_bytes), new_reader = reader.read(cls.size)
-        return cls(
-            int.from_bytes(data_bytes, byteorder=cls.byteorder),
-            metadata=Metadata(address),
-        ), new_reader
+        return (
+            cls(
+                int.from_bytes(data_bytes, byteorder=cls.byteorder),
+                metadata=Metadata(address),
+            ),
+            new_reader,
+        )
 
     def __repr__(self) -> str:
         cls_name = type(self).__name__
@@ -155,7 +158,7 @@ class StructDefinition(DataDefinition):
             )
         for (k, t), v in zip(self.field_types.items(), fields):
             if not isinstance(v, t):
-                raise ValueError(f"Got unexpected value: {v} for type: {t}")
+                raise ValueError(f"Got unexpected value: {v} for type: {t!r}")
             setattr(self, k, v)
 
     def __str__(self) -> str:
@@ -453,12 +456,13 @@ class ArrayDefinition(DataDefinition):
 
 
 def create_array_definition(
+    name: str,
     target_type: Type[DataDefinition],
     num_elems: int,
 ) -> Type[ArrayDefinition]:
     fields_parser = create_repeat_parser(num_elems, target_type.parser)
     return type(
-        f"{target_type.__name__}Array",
+        name,
         (ArrayDefinition,),
         {
             "target_type": target_type,

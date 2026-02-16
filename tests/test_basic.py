@@ -104,6 +104,7 @@ def test_pointer_type() -> None:
 
 
 Struct2IntArray5 = create_array_definition(
+    "Struct2IntArray",
     target_type=Struct2Int,
     num_elems=5,
 )

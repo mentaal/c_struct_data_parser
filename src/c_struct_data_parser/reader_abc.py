@@ -23,5 +23,8 @@ class Reader(ABC):
     def new_reader(self, address: int) -> Reader:
         return type(self)(address)
 
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}({self.address:#x})"
+
 
 ReaderData = Tuple[AddressData, Reader]
