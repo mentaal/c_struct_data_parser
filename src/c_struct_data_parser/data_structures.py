@@ -7,7 +7,7 @@ from functools import partial, reduce
 from itertools import chain
 from operator import attrgetter, methodcaller
 from textwrap import indent
-from typing import Dict, Literal, Optional, Sequence, Tuple, Type
+from typing import Any, Dict, Generic, Literal, Optional, Sequence, Tuple, Type, TypeVar
 
 from .parser import create_repeat_parser, create_sequence_parser, Parser, Reader
 
@@ -51,6 +51,10 @@ class DataDefinition(ABC):
             return f"{args_str}{prefix}Metadata(address={m.address:#x})"
         return args_str
 
+    def __getattr__(self, name: str) -> Any:
+        # Fallback for dynamic attributes, mainly for type checking
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
 
 class IntDefinition(DataDefinition):
     size: int = 0  # num bytes
@@ -60,7 +64,7 @@ class IntDefinition(DataDefinition):
     def __init__(
         self,
         value: int | Enum,
-        metadata: Metadata = None,
+        metadata: Metadata,
     ):
         super().__init__(metadata)
         if isinstance(value, int):
@@ -161,6 +165,12 @@ class StructDefinition(DataDefinition):
                 raise ValueError(f"Got unexpected value: {v} for type: {t!r}")
             setattr(self, k, v)
 
+    def __getattr__(self, name: str) -> Any:
+        # Allow dynamic field access for type checking
+        if name in self.field_types:
+            raise AttributeError(f"Field '{name}' not initialized")
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+
     def __str__(self) -> str:
         cls_name = type(self).__name__
 
@@ -215,8 +225,7 @@ def create_struct_definition(
         *map(get_parser, normalized_field_types.values())
     )
 
-    @classmethod
-    def parser(
+    def struct_parser(
         cls: Type[StructDefinition], reader: Reader
     ) -> Tuple[StructDefinition, Reader]:
         parsed_field_results, new_reader = sequence_parser(reader)
@@ -224,7 +233,7 @@ def create_struct_definition(
         return cls(parsed_field_results, metadata=metadata), new_reader
 
     new_struct.field_types = normalized_field_types
-    new_struct.parser = parser
+    new_struct.parser = classmethod(struct_parser)  # type: ignore[method-assign]
     new_struct.size = sum(map(get_size, normalized_field_types.values()))
 
     return new_struct
@@ -282,6 +291,12 @@ class BitFieldsDefinition(DataDefinition):
             if not isinstance(v, t):
                 raise ValueError(f"Got unexpected value: {v} for type: {t}")
             setattr(self, k, v)
+
+    def __getattr__(self, name: str) -> Any:
+        # Allow dynamic field access for type checking
+        if name in self.field_types:
+            raise AttributeError(f"Field '{name}' not initialized")
+        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
 
     @classmethod
     def parser(cls, reader: Reader) -> Tuple[BitFieldsDefinition, Reader]:
