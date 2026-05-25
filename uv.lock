@@ -4,7 +4,7 @@ requires-python = ">=3.11"
 
 [[package]]
 name = "c-struct-data-parser"
-version = "0.5.0"
+version = "0.5.2"
 source = { editable = "." }
 
 [package.dev-dependencies]

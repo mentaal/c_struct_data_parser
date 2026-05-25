@@ -1,9 +1,13 @@
 [project]
 name = "c-struct-data-parser"
-version = "0.5.0"
+version = "0.5.2"
 description = "Declaratively define and parse C data structures"
 readme = "README.md"
-license = "MIT"
+license = "MIT-0"
+classifiers = [
+   "License :: OSI Approved :: MIT No Attribution License (MIT-0)",
+]
+
 license-files = [
 "LICENSE",
 ]
@@ -22,3 +26,6 @@ dev = [
     "pre-commit>=4.5.1",
     "pytest>=9.0.2",
 ]
+
+[project.urls]
+Repository = "https://github.com/mentaal/c_struct_data_parser"
